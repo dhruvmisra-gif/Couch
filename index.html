@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Couch">
+<meta name="theme-color" content="#0b0b0f">
+<title>Couch</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Bebas+Neue&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header id="top"><div class="logo">COUCH</div><button class="avatar" id="avatarBtn" aria-label="Account">👤</button></header>
+
+<main>
+  <section id="v-home" class="view on"><div id="hero" class="hero skeleton"></div><div id="rows"></div></section>
+
+  <section id="v-search" class="view">
+    <div class="pad">
+      <input class="search" id="q" type="search" placeholder="Search movies and shows" autocomplete="off" enterkeyhint="search">
+      <div id="sres"></div>
+    </div>
+  </section>
+
+  <section id="v-list" class="view">
+    <div class="pad"><h2 class="ttl">My List</h2><p class="sub" id="listSub"></p><div class="grid" id="mylist"></div></div>
+  </section>
+
+  <section id="v-account" class="view">
+    <div class="pad" id="acct"></div>
+  </section>
+</main>
+
+<div class="sheet" id="sheet"><div class="panel" id="panel"></div></div>
+<div class="sheet" id="tsheet"><div class="tbox"><button class="close" id="tclose">✕</button><div id="tframe"></div></div></div>
+<div class="toast" id="toast"></div>
+
+<nav id="tabs">
+  <button class="on" data-v="home"><span class="ic">⌂</span>Home</button>
+  <button data-v="search"><span class="ic">⌕</span>Search</button>
+  <button data-v="list"><span class="ic">＋</span>My List</button>
+  <button data-v="account"><span class="ic">◉</span>Account</button>
+</nav>
+
+<script src="app.js"></script>
+</body>
+</html>
