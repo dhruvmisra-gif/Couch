@@ -50,6 +50,14 @@ function stremioWeb(type, id, videoId) {
   return `https://web.stremio.com/#/detail/${type}/${id}${v ? "/" + encodeURIComponent(v) : ""}`;
 }
 
+/* Play target: iPhone/iPad have no installable Stremio app in Australia, so "auto" uses Stremio Web there. */
+let playMode = store.get("playMode", "auto");   // auto | app | web
+const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const useWeb = () => playMode === "web" || (playMode === "auto" && isIOS);
+function playAttrs(type, id, vid) {
+  return useWeb() ? `href="${stremioWeb(type, id, vid)}" target="_blank" rel="noopener"` : `href="${stremioLink(type, id, vid)}"`;
+}
+
 /* ---------- ui bits ---------- */
 function hue(s) { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h % 360; }
 function fallbackBg(id) { const a = hue(id); return `linear-gradient(160deg,hsl(${a} 50% 26%),hsl(${(a + 200) % 360} 40% 10%))`; }
@@ -132,7 +140,7 @@ function renderHero(m) {
      <img class="lg" src="${esc(logoUrl(m))}" alt="${esc(m.name)}" onerror="this.outerHTML='<h1>${esc(esc(m.name))}</h1>'">
      <div class="meta">${m.imdbRating ? `<span class="imdb">IMDb ${esc(m.imdbRating)}</span>` : ""}<span>${esc(m.releaseInfo || m.year || "")}</span><span>${esc(genres)}</span></div>
      <p>${esc(m.description || "")}</p>
-     <div class="btns"><a class="btn play" href="${stremioLink("movie", m.id)}">▶ Play</a><button class="btn sec" data-open="movie|${esc(m.id)}">ⓘ More info</button></div>
+     <div class="btns"><a class="btn play" ${playAttrs("movie", m.id)}>▶ Play</a><button class="btn sec" data-open="movie|${esc(m.id)}">ⓘ More info</button></div>
    </div>`;
 }
 function offlineNote() { $("#rows").insertAdjacentHTML("afterbegin", `<div class="pad"><div class="box"><h3>Can't reach Stremio's catalogue</h3><p>Check your internet connection and pull down to refresh.</p></div></div>`); }
@@ -200,7 +208,7 @@ async function openDetail(type, id, vid) {
   const cast = (m.cast && m.cast.length ? m.cast : (m.links || []).filter(l => l.category === "Cast").map(l => l.name)).slice(0, 6);
   const director = (m.director && m.director.length ? m.director : (m.links || []).filter(l => l.category === "Directors").map(l => l.name)).slice(0, 3);
   const playLabel = m.type === "series" && resumeVid ? `▶ Resume ${epLabel(resumeVid)}` : (libItem?.state?.timeOffset > 0 && m.type === "movie" ? "▶ Resume in Stremio" : "▶ Play in Stremio");
-  const playHref = m.type === "series" ? stremioLink("series", id, resumeVid || "") : stremioLink("movie", id);
+  const playA = m.type === "series" ? playAttrs("series", id, resumeVid || "") : playAttrs("movie", id);
 
   panel.innerHTML = `
    <button class="close" data-close>✕</button>
@@ -208,7 +216,7 @@ async function openDetail(type, id, vid) {
      <img class="lg" src="${esc(logoUrl(m))}" alt="" onerror="this.outerHTML='<h3>${esc(esc(m.name))}</h3>'"></div>
    <div class="body">
      <div class="meta">${m.imdbRating ? `<span class="imdb">IMDb ${esc(m.imdbRating)}</span>` : ""}<span>${esc(m.releaseInfo || m.year || "")}</span>${m.runtime ? `<span>${esc(m.runtime)}</span>` : ""}<span>${m.type === "series" ? "Series" : "Film"}</span></div>
-     <a class="btn play full" href="${playHref}">${playLabel}</a>
+     <a class="btn play full" ${playA}>${playLabel}</a>
      ${trailer ? `<button class="btn sec full" data-trailer="${esc(trailer)}">🎬 Watch trailer</button>` : ""}
      <p>${esc(m.description || "")}</p>
      ${cast.length ? `<div class="kv"><b>Cast:</b> ${esc(cast.join(", "))}</div>` : ""}
@@ -245,7 +253,7 @@ function renderEpisodes(m, resumeVid) {
         const vid = v.id || `${m.id}:${v.season}:${v.episode}`;
         const future = v.released && new Date(v.released).getTime() > now;
         const date = v.released ? new Date(v.released).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : "";
-        return `<a class="ep${vid === resumeVid ? " cur" : ""}" href="${stremioLink("series", m.id, vid)}">
+        return `<a class="ep${vid === resumeVid ? " cur" : ""}" ${playAttrs("series", m.id, vid)}>
           <div class="th">${v.thumbnail ? `<img loading="lazy" src="${esc(v.thumbnail)}" alt="" onerror="this.style.display='none'">` : ""}<div class="pl">${future ? "⏳" : "▶"}</div></div>
           <div class="tx"><b>${v.episode}. ${esc(v.name || v.title || "Episode " + v.episode)}</b><small>${future ? "Coming " : ""}${esc(date)}${vid === resumeVid ? " · Up next" : ""}</small><span>${esc(v.overview || v.description || "")}</span></div></a>`;
       }).join("");
@@ -294,7 +302,7 @@ function renderAccount() {
   if (auth) {
     el.innerHTML = `<h2 class="ttl">Account</h2>
       <div class="box"><h3>Signed in to Stremio</h3><p>${esc(auth.email)}<br>Continue Watching and your library come from this account.</p>
-      <button class="btn sec" id="refresh">↻ Refresh library</button> <button class="btn sec" id="out">Sign out</button></div>${installBox()}${aboutBox()}`;
+      <button class="btn sec" id="refresh">↻ Refresh library</button> <button class="btn sec" id="out">Sign out</button></div>${playBox()}${installBox()}${aboutBox()}`;
     $("#out").onclick = async () => { await logout(); toast("Signed out"); renderAccount(); renderHome(); };
     $("#refresh").onclick = async () => { await renderLibraryRows(); renderList(); toast("Library refreshed"); };
   } else {
@@ -302,7 +310,7 @@ function renderAccount() {
       <form class="box" id="lf"><h3>Sign in with Stremio</h3><p>Shows your Continue Watching and library. Your password goes straight to Stremio; Couch only keeps the sign-in key on this device.</p>
       <input id="em" type="email" placeholder="Stremio email" autocomplete="username" required>
       <input id="pw" type="password" placeholder="Password" autocomplete="current-password" required>
-      <div class="err" id="lerr"></div><button class="btn acc full" type="submit">Sign in</button></form>${installBox()}${aboutBox()}`;
+      <div class="err" id="lerr"></div><button class="btn acc full" type="submit">Sign in</button></form>${playBox()}${installBox()}${aboutBox()}`;
     $("#lf").onsubmit = async e => {
       e.preventDefault(); $("#lerr").textContent = "";
       const b = e.target.querySelector("button"); b.textContent = "Signing in…"; b.disabled = true;
@@ -316,7 +324,13 @@ function installBox() {
   if (isStandalone()) return "";
   return `<div class="box"><h3>Install Couch</h3><p><b>iPhone / iPad:</b> open in Safari → Share → <b>Add to Home Screen</b>.<br><b>PC:</b> open in Edge or Chrome → ⋯ menu → <b>Apps → Install Couch</b>.</p>${deferredPrompt ? `<button class="btn acc" id="inst">Install now</button>` : ""}</div>`;
 }
-function aboutBox() { return `<div class="box"><h3>About</h3><p>Titles, posters and trailers come from Stremio's official Cinemeta catalogue. Tapping Play opens the title in the Stremio app — Couch doesn't stream anything itself. Make sure Stremio is installed on this device.</p></div>`; }
+function playBox() {
+  const opt = (v, label) => `<button class="btn ${playMode === v ? "acc" : "sec"}" data-pm="${v}">${label}</button>`;
+  return `<div class="box"><h3>Play opens in</h3><p>${isIOS ? "On iPhone/iPad, Auto uses Stremio Web (there's no Stremio app in the Australian App Store)." : "Auto uses the Stremio app. If Play does nothing on this computer, pick Stremio Web or install the Stremio app."}</p>
+    <div class="btns">${opt("auto", "Auto")}${opt("app", "Stremio app")}${opt("web", "Stremio Web")}</div></div>`;
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-pm]"); if (!b) return; playMode = b.dataset.pm; store.set("playMode", playMode); renderAccount(); renderHome(); toast("Play setting saved"); });
+function aboutBox() { return `<div class="box"><h3>About</h3><p>Titles, posters and trailers come from Stremio's official Cinemeta catalogue. Tapping Play opens the title in Stremio (app or web, see above) — Couch doesn't stream anything itself.</p></div>`; }
 let deferredPrompt = null;
 addEventListener("beforeinstallprompt", e => { e.preventDefault(); deferredPrompt = e; });
 document.addEventListener("click", async e => { if (e.target.id === "inst" && deferredPrompt) { deferredPrompt.prompt(); deferredPrompt = null; } });
